@@ -3,8 +3,6 @@ import streamlit as st
 # Configuração inicial
 st.set_page_config(page_title="Repósitorio de Links", layout="centered",  page_icon="🗄️")
 
-
-
 # --- VERIFICAÇÃO DE SENHA ---
 SENHA_CORRETA = "23"
 senha_digitada = st.text_input("Digite a senha para acessar a lista de links:", type="password")
@@ -83,13 +81,12 @@ col1, col2 = st.columns(2)
 with col1:
     st.markdown('<h3 class="section-header">📊 Ferramentas Previdenciárias</h3>', unsafe_allow_html=True)
 
-
     # Link 1 - 🔍 Buscador de rubricas do HISCRE
     st.markdown(f"""
     <div class="link-card">
         <h3>🔍 Buscador de Rubricas no HISCRE</h3>
         <p>Informe até 4 rubricas específicas para buscar | Organiza em ordem cronológica por competência | Você pode baixar o resultado em CSV </p>
-        <a href="https://04-buscador-de-rubricas.streamlit.app/" target="_blank">
+        <a href="https://07-buscador-de-rubricas.streamlit.app/" target="_blank">
             <button class="link-button">🔗 Acessar: 🔍 Buscador de Rubricas no HISCRE </button>
         </a>
     </div>
@@ -100,37 +97,46 @@ with col1:
     <div class="link-card">
         <h3>📅 Cálculo de Multa Diária Corrigida por Faixa</h3>
         <p>Adicione faixas de multa com valores diferentes. O total por mês será corrigido por índice informado manualmente ou automaticamente pela SELIC.</p>
-        <a href="https://05-calculomulta.streamlit.app//" target="_blank">
+        <a href="https://02-calculo-da-multa.streamlit.app/" target="_blank">
             <button class="link-button">🔗 Acessar Calculadora de Multa</button>
         </a>
     </div>
     """, unsafe_allow_html=True)
 
+    # Link 3 - Cálculo de Multa 2
+    st.markdown(f"""
+    <div class="link-card">
+        <h3>📅 Cálculo de Multa Diária Corrigida por Faixa (Versão 2)</h3>
+        <p>Versão alternativa da calculadora de multa com funcionalidades adicionais.</p>
+        <a href="https://03-calculomulta.streamlit.app/" target="_blank">
+            <button class="link-button">🔗 Acessar Calculadora de Multa V2</button>
+        </a>
+    </div>
+    """, unsafe_allow_html=True)
    
-    # Link 3 - Benefício Redutor
+    # Link 4 - Benefício Redutor
     st.markdown(f"""
     <div class="link-card">
         <h3>📊 Cálculo de Acumulação de Benefícios Previdenciários</h3>
         <p>Calculadora conforme as regras de redução na acumulação de benefícios (EC 103/2019). Quando uma pessoa tem direito a receber dois benefícios previdenciários ao mesmo tempo, o segundo benefício será reduzido conforme as faixas estabelecidas.</p>
-        <a href="https://01-beneficioredutor.streamlit.app/" target="_blank">
+        <a href="https://01-beneficioredutoracmulacao.streamlit.app/" target="_blank">
             <button class="link-button">🔗 Acessar Calculadora Previdenciária</button>
         </a>
     </div>
     """, unsafe_allow_html=True)
 
-    # link 4 -CÁLCULO DE ACUMULAÇÃO DE BENEFÍCIOS
+    # Link 5 - CÁLCULO DE ACUMULAÇÃO DE BENEFÍCIOS
     st.markdown(f"""
     <div class="link-card">
         <h3>📊 CÁLCULO DE ACUMULAÇÃO DE BENEFÍCIOS</h3>
         <p>Calculadora conforme as regras de redução na acumulação de benefícios (EC 103/2019).</p>
-        <a href="https://14-redutorbenefnovo.streamlit.app////" target="_blank">
+        <a href="https://06-acmulacao-de-beneficios.streamlit.app/" target="_blank">
             <button class="link-button">🔗 Calculadora de acumulação </button>
         </a>
     </div>
     """, unsafe_allow_html=True)
 
-#COLUNA 2
-
+# COLUNA 2
 with col2:
     st.markdown('<h3 class="section-header">⚙️ Ferramentas Técnicas e Produtividade</h3>', unsafe_allow_html=True)
     
@@ -139,71 +145,68 @@ with col2:
     <div class="link-card">
         <h3>🔓 Desbloqueador de Projetos VBA Excel</h3>
         <p>Ferramenta para desbloquear e recuperar projetos VBA no Excel.</p>
-        <a href="https://06-quebrasenhavba.streamlit.app/" target="_blank">
+        <a href="https://04-quebrasenhavba.streamlit.app/" target="_blank">
             <button class="link-button">🔗 Acessar Desbloqueador VBA</button>
         </a>
     </div>
     """, unsafe_allow_html=True)
 
-    # Link 2 - Sistema AnaClara 2
+    # Link 2 - Sistema AnaClara 1
     st.markdown(f"""
     <div class="link-card">
-        <h3>✨ Sistema de Cálculo de Adicionais Trabalhistas - AnaClara (com verificação da periculosidade)</h3>
+        <h3>✨ Sistema de Cálculo de Adicionais Trabalhistas - AnaClara</h3>
         <p>Sistema com verificação da periculosidade para cálculo de adicionais trabalhistas.</p>
-        <a href="https://03-anaclara2.streamlit.app/" target="_blank">
+        <a href="https://01-anaclara.streamlit.app/" target="_blank">
             <button class="link-button">🔗 Acessar Sistema AnaClara</button>
         </a>
     </div>
     """, unsafe_allow_html=True)
 
-
-    # Link 3 - Sistema AnaClara 1
+    # Link 3 - Sistema AnaClara 2
     st.markdown(f"""
     <div class="link-card">
-        <h3>⭐ Sistema de Cálculo de Adicionais Trabalhistas - AnaClara</h3>
-        <p>Versão original do sistema de cálculo de adicionais trabalhistas.</p>
+        <h3>⭐ Sistema de Cálculo de Adicionais Trabalhistas - AnaClara (Versão 2)</h3>
+        <p>Versão alternativa do sistema de cálculo de adicionais trabalhistas.</p>
         <a href="https://02-anaclara.streamlit.app/" target="_blank">
-            <button class="link-button">🔗 Acessar Sistema AnaClara Original</button>
+            <button class="link-button">🔗 Acessar Sistema AnaClara V2</button>
         </a>
     </div>
     """, unsafe_allow_html=True)
 
-    # Link - 4 - Foto3x4em10x15
+    # Link 4 - Sistema AnaClara 3
     st.markdown(f"""
     <div class="link-card">
-        <h3>📷 Transformar qualquer foto em 3x4 e num grid de 10x15</h3>
-        <p>Este é um aplicativo web desenvolvido em Streamlit que automatiza a criação de folhas de fotos 3x4 no formato 10x15 cm, prontas para impressão</p>
-        <a href="https://10-foto3x4em10x15.streamlit.app/" target="_blank">
-            <button class="link-button">🔗 foto em 3x4 e num grid de 10x15</button>
+        <h3>🚀 Sistema de Cálculo de Adicionais Trabalhistas - AnaClara (Versão 3)</h3>
+        <p>Versão mais avançada do sistema de cálculo de adicionais trabalhistas.</p>
+        <a href="https://03-anaclara.streamlit.app/" target="_blank">
+            <button class="link-button">🔗 Acessar Sistema AnaClara V3</button>
         </a>
     </div>
     """, unsafe_allow_html=True)
-    
-    # Link - 5 - Calculadora de IR 2024 fenomenal com base em planilha
+
+    # Link 5 - Calculadora de IR 2024
     st.markdown(f"""
     <div class="link-card">
-        <h3>Calculadora de IR 2024 fenomenal com base em planilha</h3>
+        <h3>💰 Calculadora de IR 2024 fenomenal com base em planilha</h3>
         <p>Cálculo de INSS com base nas faixas da previdência | Cálculo de IR usando both métodos (tradicional e simplificado)| Comparação entre os dois métodos para mostrar qual é mais vantajoso |Tabelas de referência para consulta | Interface amigável com sidebar para entrada de dados</p>
-        <a href="https://12-planilhair24.streamlit.app//" target="_blank">
+        <a href="https://05-planilhair24.streamlit.app/" target="_blank">
             <button class="link-button">🔗 Calculadora de IR 2024 </button>
         </a>
     </div>
     """, unsafe_allow_html=True)
 
-    # Link - 6 - Unir pdfs
+    # Link 6 - Sistema de Triagem
     st.markdown(f"""
     <div class="link-card">
-        <h3>📕 Unir e dividir arquivos em pdf</h3>
-        <p>Unir e dividir arquivos em pdf, funcionalidades de redução de tamanho em aprimoração.</p>
-        <a href="https://14pdffuz.streamlit.app///" target="_blank">
-            <button class="link-button">📕 Unir pdf </button>
+        <h3>⚖️ Sistema de Triagem de Processos Judiciais</h3>
+        <p>Sistema completo para gestão e triagem de processos judiciais com relatórios PDF e atribuição de servidores.</p>
+        <a href="https://08-triagem-27do10-10e49.streamlit.app/" target="_blank">
+            <button class="link-button">🔗 Acessar Sistema de Triagem</button>
         </a>
     </div>
     """, unsafe_allow_html=True)
 
-
-    
-    # Espaço para futuros projetos
+# Espaço para futuros projetos
 st.markdown(f"""
     <div class="link-card">
         <h3>🚧 Novo Projeto em Desenvolvimento</h3>
@@ -220,10 +223,10 @@ st.markdown("### 📧 Contato e Suporte")
 col_contact1, col_contact2, col_contact3 = st.columns(3)
 
 with col_contact1:
-    st.info("**Email:**\carlos.patrick@hotmail.com")
+    st.info("**Email:**\ncarlos.patrick@hotmail.com")
 
 with col_contact2:
-    st.info("**W:**\https://l1nk.dev/WVtgy")
+    st.info("**W:**\nhttps://l1nk.dev/WVtgy")
 
 with col_contact3:
     st.info("**Status dos Sistemas:**\n✅ Todos operacionais")
@@ -239,21 +242,21 @@ with st.sidebar:
     """, unsafe_allow_html=True)
     
     st.header("📊 Estatísticas")
-    st.metric("Total de Projetos", "5")
-    st.metric("Projetos Ativos", "5")
+    st.metric("Total de Projetos", "11")
+    st.metric("Projetos Ativos", "11")
     st.metric("Última Atualização", "Hoje")
     
     st.header("🔔 Novidades")
     st.success("""
     **Última atualização:**
-    - Calculadora de multa com correção SELIC com logo JF
-    
+    - Todos os links atualizados para nova estrutura
+    - Novo sistema de triagem de processos
+    - Calculadoras de multa aprimoradas
     """)
     
-   
     st.header("📞 Suporte Rápido")
     st.link_button("🆘 Reportar Problema", "https://l1nk.dev/WVtgy", use_container_width=True)
-    st.link_button("💡 Sugerir Melhoria", "carlos.patrick@hotmail.com", use_container_width=True)
+    st.link_button("💡 Sugerir Melhoria", "mailto:carlos.patrick@hotmail.com", use_container_width=True)
     
 # Informação adicional
 st.markdown("---")
