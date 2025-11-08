@@ -62,6 +62,20 @@ def extract_tables_from_pdf(pdf_file):
                 
     return tables
 
+def combine_all_tables(extracted_data):
+    """Combina todas as tabelas em um único DataFrame"""
+    combined_dfs = []
+    
+    for table_name, df in extracted_data.items():
+        # Adicionar coluna identificadora
+        df_copy = df.copy()
+        df_copy['Fonte_Tabela'] = table_name
+        combined_dfs.append(df_copy)
+    
+    if combined_dfs:
+        return pd.concat(combined_dfs, ignore_index=True)
+    return pd.DataFrame()
+
 def main():
     st.set_page_config(page_title="Extrator Multi-Tabelas PDF", page_icon="📄", layout="wide")
     
@@ -187,11 +201,11 @@ def main():
             # Download de todas as tabelas selecionadas
             if all_extracted_data:
                 st.markdown("---")
-                st.subheader("💾 Download de Todas as Tabelas Selecionadas")
+                st.subheader("💾 Download das Tabelas Selecionadas")
                 
                 download_format = st.radio(
                     "Formato de download:",
-                    ["Excel (Múltiplas abas)", "CSV Individual"],
+                    ["Excel (Múltiplas abas)", "Excel (Todas juntas)", "CSV Individual"],
                     horizontal=True
                 )
                 
@@ -208,9 +222,41 @@ def main():
                     st.download_button(
                         label="📥 Baixar Excel com Múltiplas Abas",
                         data=buffer.getvalue(),
-                        file_name=f"multiplas_tabelas_{timestamp}.xlsx",
-                        mime="application/vnd.ms-excel"
+                        file_name=f"multiplas_tabelas_abas_{timestamp}.xlsx",
+                        mime="application/vnd.ms-excel",
+                        key="excel_multiple"
                     )
+                
+                elif download_format == "Excel (Todas juntas)":
+                    # Combinar todas as tabelas
+                    combined_df = combine_all_tables(all_extracted_data)
+                    
+                    if not combined_df.empty:
+                        buffer = BytesIO()
+                        with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
+                            combined_df.to_excel(writer, index=False, sheet_name='Todas_Tabelas')
+                        
+                        st.download_button(
+                            label="📥 Baixar Excel com Todas as Tabelas Juntas",
+                            data=buffer.getvalue(),
+                            file_name=f"todas_tabelas_juntas_{timestamp}.xlsx",
+                            mime="application/vnd.ms-excel",
+                            key="excel_combined"
+                        )
+                        
+                        # Mostrar preview da tabela combinada
+                        st.write("**Preview da tabela combinada:**")
+                        st.dataframe(combined_df, use_container_width=True, height=300)
+                        
+                        # Estatísticas da combinação
+                        st.write("**Estatísticas da combinação:**")
+                        col_stats1, col_stats2, col_stats3 = st.columns(3)
+                        with col_stats1:
+                            st.metric("Total de linhas", combined_df.shape[0])
+                        with col_stats2:
+                            st.metric("Total de colunas", combined_df.shape[1])
+                        with col_stats3:
+                            st.metric("Tabelas combinadas", len(all_extracted_data))
                 
                 else:  # CSV Individual
                     st.write("**Download individual de cada tabela:**")
@@ -227,18 +273,39 @@ def main():
                         )
                 
                 # Resumo final
+                st.markdown("---")
                 st.subheader("📈 Resumo da Extração")
+                
                 total_tables = len(all_extracted_data)
                 total_rows = sum([df.shape[0] for df in all_extracted_data.values()])
                 total_cols = sum([df.shape[1] for df in all_extracted_data.values()])
+                total_cells = sum([df.shape[0] * df.shape[1] for df in all_extracted_data.values()])
+                filled_cells = sum([df.count().sum() for df in all_extracted_data.values()])
                 
-                col6, col7, col8 = st.columns(3)
+                col6, col7, col8, col9 = st.columns(4)
                 with col6:
                     st.metric("Tabelas extraídas", total_tables)
                 with col7:
                     st.metric("Total de linhas", total_rows)
                 with col8:
                     st.metric("Total de colunas", total_cols)
+                with col9:
+                    st.metric("Taxa de preenchimento", f"{(filled_cells/total_cells*100):.1f}%")
+                
+                # Tabela de resumo detalhado
+                st.write("**Detalhes por tabela:**")
+                summary_data = []
+                for table_name, df in all_extracted_data.items():
+                    summary_data.append({
+                        'Tabela': table_name,
+                        'Linhas': df.shape[0],
+                        'Colunas': df.shape[1],
+                        'Células Preenchidas': f"{df.count().sum()}/{df.shape[0] * df.shape[1]}",
+                        'Preenchimento': f"{(df.count().sum()/(df.shape[0] * df.shape[1])*100):.1f}%"
+                    })
+                
+                summary_df = pd.DataFrame(summary_data)
+                st.dataframe(summary_df, use_container_width=True)
                 
         except Exception as e:
             st.error(f"❌ Erro ao processar o PDF: {str(e)}")
@@ -251,13 +318,26 @@ def main():
         2. **Selecione múltiplas tabelas** na lista
         3. **Para cada tabela:** escolha as colunas
         4. **Visualize** os dados selecionados
-        5. **Baixe tudo** em Excel ou CSVs individuais
+        5. **Baixe** em:
+           - Excel com abas separadas
+           - Excel com todas juntas
+           - CSVs individuais
         
         **Recursos:**
         - ✅ Múltiplas tabelas
+        - ✅ Combinação em um único arquivo
         - ✅ Nomes de colunas corrigidos
         - ✅ Download em lote
         - ✅ Tratamento de erros
+        """)
+        
+        st.header("📊 Sobre a Combinação")
+        st.markdown("""
+        **Excel (Todas juntas):**
+        - Une todas as tabelas em uma única planilha
+        - Adiciona coluna 'Fonte_Tabela' identificando a origem
+        - Ideal para análise consolidada
+        - Mantém a estrutura original de cada tabela
         """)
 
 if __name__ == "__main__":
