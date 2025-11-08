@@ -29,6 +29,7 @@ workalendar
 
 plotly==5.15.0
 openpyxl==3.1.2
+xlsxwriter
 
 # Observação:
 # Se algum script antigo usar a versão velha do fpdf (sem suporte a UTF-8),
