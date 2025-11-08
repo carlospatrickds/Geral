@@ -4,6 +4,58 @@ import pdfplumber
 import io
 from io import BytesIO
 import re
+from datetime import datetime
+
+def detect_date_column(column_data):
+    """Detecta se uma coluna contém datas no formato MM/AAAA"""
+    date_pattern = r'^\d{1,2}/\d{4}$'
+    date_count = 0
+    total_non_empty = 0
+    
+    for value in column_data:
+        if pd.notna(value) and str(value).strip():
+            total_non_empty += 1
+            if re.match(date_pattern, str(value).strip()):
+                date_count += 1
+    
+    # Se mais de 80% dos valores não vazios são datas, considera como coluna de data
+    if total_non_empty > 0 and (date_count / total_non_empty) > 0.8:
+        return True
+    return False
+
+def detect_header_row(table_data):
+    """Detecta automaticamente a linha do cabeçalho"""
+    if not table_data or len(table_data) < 2:
+        return 0
+    
+    # Verificar se a primeira linha parece ser cabeçalho
+    first_row = table_data[0]
+    second_row = table_data[1]
+    
+    # Critérios para identificar cabeçalho:
+    # 1. Se a primeira linha contém principalmente texto e a segunda contém datas/números
+    # 2. Se a primeira linha tem muitos valores vazios/nulos (provavelmente não é cabeçalho)
+    # 3. Se a segunda linha começa com uma data
+    
+    first_row_non_empty = sum(1 for cell in first_row if cell and str(cell).strip())
+    second_row_non_empty = sum(1 for cell in second_row if cell and str(cell).strip())
+    
+    # Se a primeira linha tem poucos valores não vazios, provavelmente não é cabeçalho
+    if first_row_non_empty < len(first_row) * 0.3:
+        return 0  # Não tem cabeçalho
+    
+    # Verificar se a segunda linha começa com data
+    if second_row and second_row[0] and detect_date_column([second_row[0]]):
+        return 0  # Não tem cabeçalho, dados começam na primeira linha
+    
+    # Verificar se a primeira linha parece ter nomes de colunas (texto mais descritivo)
+    first_row_has_text = sum(1 for cell in first_row if cell and any(c.isalpha() for c in str(cell)))
+    second_row_has_numbers = sum(1 for cell in second_row if cell and any(c.isdigit() for c in str(cell)))
+    
+    if first_row_has_text > second_row_has_numbers:
+        return 0  # Primeira linha é provavelmente cabeçalho
+    else:
+        return -1  # Não tem cabeçalho claro
 
 def clean_column_names(columns):
     """Limpa e corrige nomes de colunas duplicados"""
@@ -22,8 +74,29 @@ def clean_column_names(columns):
     
     return cleaned_columns
 
+def generate_column_names(num_columns, first_row_data=None):
+    """Gera nomes de colunas baseados no conteúdo ou sequenciais"""
+    columns = []
+    
+    if first_row_data and any(first_row_data):
+        # Tentar usar a primeira linha como base para nomes
+        for i, cell in enumerate(first_row_data):
+            if cell and str(cell).strip():
+                # Verificar se é data - se for, usar nome padrão
+                if detect_date_column([cell]):
+                    columns.append(f'Data')
+                else:
+                    columns.append(f'Coluna_{i+1}_{str(cell)[:20]}')
+            else:
+                columns.append(f'Coluna_{i+1}')
+    else:
+        # Nomes sequenciais
+        columns = [f'Coluna_{i+1}' for i in range(num_columns)]
+    
+    return clean_column_names(columns)
+
 def extract_tables_from_pdf(pdf_file):
-    """Extrai todas as tabelas de um arquivo PDF com tratamento de erros"""
+    """Extrai todas as tabelas de um arquivo PDF com detecção inteligente de cabeçalhos"""
     tables = []
     with pdfplumber.open(pdf_file) as pdf:
         for page_num, page in enumerate(pdf.pages):
@@ -32,24 +105,39 @@ def extract_tables_from_pdf(pdf_file):
                 page_tables = page.extract_tables()
                 
                 for table_num, table in enumerate(page_tables):
-                    if table and len(table) > 1:  # Ignorar tabelas vazias ou com apenas cabeçalho
+                    if table and len(table) > 1:  # Ignorar tabelas vazias ou com apenas uma linha
                         try:
+                            # Detectar se tem cabeçalho
+                            header_row_index = detect_header_row(table)
+                            
+                            if header_row_index == 0:
+                                # Tem cabeçalho na primeira linha
+                                headers = table[0]
+                                data_rows = table[1:]
+                            else:
+                                # Não tem cabeçalho claro - gerar nomes automaticamente
+                                headers = generate_column_names(len(table[0]), table[0])
+                                data_rows = table
+                            
                             # Limpar nomes de colunas
-                            headers = table[0]
                             cleaned_headers = clean_column_names(headers)
                             
                             # Converter para DataFrame
-                            df = pd.DataFrame(table[1:], columns=cleaned_headers)
+                            df = pd.DataFrame(data_rows, columns=cleaned_headers)
                             
                             # Adicionar metadados
                             df['_page'] = page_num + 1
                             df['_table'] = table_num + 1
                             df['_table_id'] = f"p{page_num+1}_t{table_num+1}"
+                            df['_has_header'] = (header_row_index == 0)
                             
                             # Remover linhas completamente vazias
                             df = df.dropna(how='all')
                             
-                            if not df.empty:
+                            # Remover colunas completamente vazias
+                            df = df.dropna(axis=1, how='all')
+                            
+                            if not df.empty and len(df.columns) > 3:  # Pelo menos uma coluna de dados além dos metadados
                                 tables.append(df)
                                 
                         except Exception as e:
@@ -80,7 +168,7 @@ def main():
     st.set_page_config(page_title="Extrator Multi-Tabelas PDF", page_icon="📄", layout="wide")
     
     st.title("📄 Extrator Multi-Tabelas de PDF")
-    st.write("Extraia múltiplas tabelas de PDFs e selecione colunas de cada uma")
+    st.write("Extraia múltiplas tabelas de PDFs com detecção automática de cabeçalhos")
     
     # Upload do arquivo PDF
     uploaded_file = st.file_uploader(
@@ -100,6 +188,10 @@ def main():
             
             st.success(f"✅ {len(tables)} tabela(s) encontrada(s) no PDF")
             
+            # Mostrar estatísticas de cabeçalhos detectados
+            headers_detected = sum(1 for table in tables if table['_has_header'].iloc[0])
+            st.info(f"📊 {headers_detected} tabela(s) com cabeçalho detectado | {len(tables) - headers_detected} tabela(s) com cabeçalho gerado automaticamente")
+            
             # Seleção múltipla de tabelas
             st.subheader("📋 Selecione as Tabelas")
             
@@ -108,16 +200,20 @@ def main():
             for i, table in enumerate(tables):
                 page = table['_page'].iloc[0]
                 table_num = table['_table'].iloc[0]
-                cols = len(table.columns) - 3  # Descontar colunas de metadados
+                has_header = table['_has_header'].iloc[0]
+                cols = len(table.columns) - 4  # Descontar colunas de metadados
                 rows = len(table)
+                
+                header_status = "✅ Com cabeçalho" if has_header else "🤖 Cabeçalho gerado"
                 
                 table_options.append({
                     'index': i,
-                    'label': f"Tabela {table_num} (Página {page}) - {rows}×{cols}",
+                    'label': f"Tabela {table_num} (Página {page}) - {rows}×{cols} - {header_status}",
                     'page': page,
                     'table_num': table_num,
                     'rows': rows,
-                    'cols': cols
+                    'cols': cols,
+                    'has_header': has_header
                 })
             
             # Widget para seleção múltipla
@@ -140,13 +236,16 @@ def main():
                 table_info = table_options[table_idx]
                 
                 st.markdown("---")
-                st.subheader(f"📊 {table_info['label']}")
+                
+                # Ícone indicador de cabeçalho
+                header_icon = "✅" if table_info['has_header'] else "🤖"
+                st.subheader(f"{header_icon} {table_info['label']}")
                 
                 # Remover colunas internas de controle para display
-                df_display = df.drop(['_page', '_table', '_table_id'], axis=1, errors='ignore')
+                df_display = df.drop(['_page', '_table', '_table_id', '_has_header'], axis=1, errors='ignore')
                 
                 # Mostrar preview da tabela
-                col1, col2 = st.columns([3, 1])
+                col1, col2, col3 = st.columns([3, 1, 1])
                 
                 with col1:
                     st.dataframe(df_display, use_container_width=True, height=250)
@@ -154,7 +253,10 @@ def main():
                 with col2:
                     st.metric("Linhas", df_display.shape[0])
                     st.metric("Colunas", df_display.shape[1])
+                
+                with col3:
                     st.metric("Página", table_info['page'])
+                    st.metric("Cabeçalho", "Detectado" if table_info['has_header'] else "Gerado")
                 
                 # Preparar dados para seleção
                 df_clean = df_display.copy()
@@ -170,7 +272,7 @@ def main():
                 # Seleção de colunas para esta tabela
                 if len(df_clean.columns) > 0:
                     selected_columns = st.multiselect(
-                        f"Selecione colunas para {table_info['label']}:",
+                        f"Selecione colunas para extrair:",
                         options=df_clean.columns.tolist(),
                         default=df_clean.columns.tolist()[:min(3, len(df_clean.columns))],
                         key=f"cols_{table_idx}"
@@ -190,13 +292,13 @@ def main():
                         # Estatísticas desta tabela
                         col3, col4, col5 = st.columns(3)
                         with col3:
-                            st.metric(f"Linhas {table_info['label']}", extracted_df.shape[0])
+                            st.metric(f"Linhas extraídas", extracted_df.shape[0])
                         with col4:
-                            st.metric(f"Colunas {table_info['label']}", extracted_df.shape[1])
+                            st.metric(f"Colunas extraídas", extracted_df.shape[1])
                         with col5:
                             total_cells = extracted_df.shape[0] * extracted_df.shape[1]
                             filled_cells = extracted_df.count().sum()
-                            st.metric(f"Preenchimento {table_info['label']}", f"{(filled_cells/total_cells*100):.1f}%")
+                            st.metric(f"Preenchimento", f"{(filled_cells/total_cells*100):.1f}%")
             
             # Download de todas as tabelas selecionadas
             if all_extracted_data:
@@ -247,16 +349,6 @@ def main():
                         # Mostrar preview da tabela combinada
                         st.write("**Preview da tabela combinada:**")
                         st.dataframe(combined_df, use_container_width=True, height=300)
-                        
-                        # Estatísticas da combinação
-                        st.write("**Estatísticas da combinação:**")
-                        col_stats1, col_stats2, col_stats3 = st.columns(3)
-                        with col_stats1:
-                            st.metric("Total de linhas", combined_df.shape[0])
-                        with col_stats2:
-                            st.metric("Total de colunas", combined_df.shape[1])
-                        with col_stats3:
-                            st.metric("Tabelas combinadas", len(all_extracted_data))
                 
                 else:  # CSV Individual
                     st.write("**Download individual de cada tabela:**")
@@ -279,33 +371,14 @@ def main():
                 total_tables = len(all_extracted_data)
                 total_rows = sum([df.shape[0] for df in all_extracted_data.values()])
                 total_cols = sum([df.shape[1] for df in all_extracted_data.values()])
-                total_cells = sum([df.shape[0] * df.shape[1] for df in all_extracted_data.values()])
-                filled_cells = sum([df.count().sum() for df in all_extracted_data.values()])
                 
-                col6, col7, col8, col9 = st.columns(4)
+                col6, col7, col8 = st.columns(3)
                 with col6:
                     st.metric("Tabelas extraídas", total_tables)
                 with col7:
                     st.metric("Total de linhas", total_rows)
                 with col8:
                     st.metric("Total de colunas", total_cols)
-                with col9:
-                    st.metric("Taxa de preenchimento", f"{(filled_cells/total_cells*100):.1f}%")
-                
-                # Tabela de resumo detalhado
-                st.write("**Detalhes por tabela:**")
-                summary_data = []
-                for table_name, df in all_extracted_data.items():
-                    summary_data.append({
-                        'Tabela': table_name,
-                        'Linhas': df.shape[0],
-                        'Colunas': df.shape[1],
-                        'Células Preenchidas': f"{df.count().sum()}/{df.shape[0] * df.shape[1]}",
-                        'Preenchimento': f"{(df.count().sum()/(df.shape[0] * df.shape[1])*100):.1f}%"
-                    })
-                
-                summary_df = pd.DataFrame(summary_data)
-                st.dataframe(summary_df, use_container_width=True)
                 
         except Exception as e:
             st.error(f"❌ Erro ao processar o PDF: {str(e)}")
@@ -318,26 +391,25 @@ def main():
         2. **Selecione múltiplas tabelas** na lista
         3. **Para cada tabela:** escolha as colunas
         4. **Visualize** os dados selecionados
-        5. **Baixe** em:
-           - Excel com abas separadas
-           - Excel com todas juntas
-           - CSVs individuais
+        5. **Baixe** no formato desejado
         
-        **Recursos:**
-        - ✅ Múltiplas tabelas
-        - ✅ Combinação em um único arquivo
-        - ✅ Nomes de colunas corrigidos
-        - ✅ Download em lote
-        - ✅ Tratamento de erros
+        **Recursos de detecção:**
+        - ✅ Cabeçalhos automáticos
+        - ✅ Detecção de colunas de data
+        - ✅ Nomes inteligentes para colunas
+        - ✅ Tratamento de tabelas sem cabeçalho
         """)
         
-        st.header("📊 Sobre a Combinação")
+        st.header("🔍 Sobre a Detecção")
         st.markdown("""
-        **Excel (Todas juntas):**
-        - Une todas as tabelas em uma única planilha
-        - Adiciona coluna 'Fonte_Tabela' identificando a origem
-        - Ideal para análise consolidada
-        - Mantém a estrutura original de cada tabela
+        **Cabeçalhos detectados automaticamente quando:**
+        - Primeira linha contém texto descritivo
+        - Segunda linha contém dados (números/datas)
+        
+        **Cabeçalhos gerados automaticamente quando:**
+        - Tabela começa direto com dados
+        - Primeira linha contém datas/números
+        - Estrutura não parece ter cabeçalho
         """)
 
 if __name__ == "__main__":
