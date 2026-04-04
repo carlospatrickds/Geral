@@ -1,4 +1,10 @@
 # Bibliotecas principais
+
+
+gspread
+google-auth
+
+
 fpdf2
 streamlit>=1.22.0
 pandas>=2.0.0
